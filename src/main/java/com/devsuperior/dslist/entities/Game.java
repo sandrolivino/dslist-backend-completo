@@ -1,7 +1,9 @@
 package com.devsuperior.dslist.entities;
 
 import java.util.Objects;
+import java.util.UUID;
 
+import com.devsuperior.dslist.enums.Genre;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -14,13 +16,13 @@ import jakarta.persistence.Table;
 public class Game {
 
 	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Long id;
+	@GeneratedValue(strategy = GenerationType.UUID)
+	private UUID id;
 	private String title;
 	
 	@Column(name = "game_year")
 	private Integer year;
-	private String genre;
+	private Genre genre;
 	private String platforms;
 	private Double score;
 	private String imgUrl;
@@ -30,12 +32,15 @@ public class Game {
 
 	@Column(columnDefinition = "TEXT")
 	private String longDescription;
+	@Column(name="inventory_status")
+	private String inventoryStatus;
+	private Integer price;
 	
     public Game() {
     }
     
-	public Game(Long id, String title, Integer year, String genre, String platforms, Double score, String imgUrl,
-			String shortDescription, String longDescription) {
+	public Game(UUID id, String title, Integer year, Genre genre, String platforms, Double score, String imgUrl,
+			String shortDescription, String longDescription, Integer price, String inventoryStatus) {
 		this.id = id;
 		this.title = title;
 		this.year = year;
@@ -44,14 +49,16 @@ public class Game {
 		this.score = score;
 		this.imgUrl = imgUrl;
 		this.shortDescription = shortDescription;
-		this.longDescription = longDescription;		
+		this.longDescription = longDescription;
+		this.price = price;
+		this.inventoryStatus = inventoryStatus;
 	}
 
-	public Long getId() {
+	public UUID getId() {
 		return id;
 	}
 
-	public void setId(Long id) {
+	public void setId(UUID id) {
 		this.id = id;
 	}
 
@@ -71,11 +78,11 @@ public class Game {
 		this.year = year;
 	}
 
-	public String getGenre() {
+	public Genre getGenre() {
 		return genre;
 	}
 
-	public void setGenre(String genre) {
+	public void setGenre(Genre genre) {
 		this.genre = genre;
 	}
 
@@ -117,6 +124,22 @@ public class Game {
 
 	public void setLongDescription(String longDescription) {
 		this.longDescription = longDescription;
+	}
+
+	public Integer getPrice() {
+		return price;
+	}
+
+	public void setPrice(Integer price) {
+		this.price = price;
+	}
+
+	public String getInventoryStatus() {
+		return inventoryStatus;
+	}
+
+	public void setInventoryStatus(String inventoryStatus) {
+		this.inventoryStatus = inventoryStatus;
 	}
 
 	@Override

@@ -1,30 +1,38 @@
 package com.devsuperior.dslist.dto;
 
+import com.devsuperior.dslist.enums.Genre;
 import org.springframework.beans.BeanUtils;
 
 import com.devsuperior.dslist.entities.Game;
 
+import java.util.UUID;
+
 public class GameDTO {
 
-	private Long id;
+	private UUID id;
 	private String title;
 	private Integer year;
-	private String genre;
+	private Genre genre;
 	private String platforms;
 	private Double score;
 	private String imgUrl;
 	private String shortDescription;
 	private String longDescription;
-	
+	private Integer price;
+
+	private String inventoryStatus;
+
+	public GameDTO() {}
+
 	public GameDTO(Game entity) {
 		BeanUtils.copyProperties(entity, this);
 	}
 
-	public Long getId() {
+	public UUID getId() {
 		return id;
 	}
 
-	public void setId(Long id) {
+	public void setId(UUID id) {
 		this.id = id;
 	}
 
@@ -44,11 +52,11 @@ public class GameDTO {
 		this.year = year;
 	}
 
-	public String getGenre() {
+	public Genre getGenre() {
 		return genre;
 	}
 
-	public void setGenre(String genre) {
+	public void setGenre(Genre genre) {
 		this.genre = genre;
 	}
 
@@ -90,5 +98,21 @@ public class GameDTO {
 
 	public void setLongDescription(String longDescription) {
 		this.longDescription = longDescription;
+	}
+
+	public Integer getPrice() {
+		return price;
+	}
+
+	public void setPrice(Integer price) {
+		this.price = price;
+	}
+
+	public String getInventoryStatus() {
+		return inventoryStatus;
+	}
+
+	public void setInventoryStatus(String inventoryStatus) {
+		this.inventoryStatus = inventoryStatus;
 	}
 }

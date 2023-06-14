@@ -1,8 +1,10 @@
 package com.devsuperior.dslist.projections;
 
+import java.util.UUID;
+
 public interface GameMinProjection {
 
-	Long getId();
+	UUID getId();
 	String getTitle();
 	Integer getGameYear();
 	String getImgUrl();

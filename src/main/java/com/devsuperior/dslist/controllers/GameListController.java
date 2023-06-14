@@ -20,26 +20,25 @@ import com.devsuperior.dslist.services.GameService;
 @RequestMapping(value = "/lists")
 public class GameListController {
 
-	@Autowired
-	private GameListService gameListService;
-	
-	@Autowired
-	private GameService gameService;
+    @Autowired
+    private GameListService gameListService;
 
-	@GetMapping
-	public List<GameListDTO> findAll() {
-		List<GameListDTO> result = gameListService.findAll();
-		return result;
-	}
+    @Autowired
+    private GameService gameService;
 
-	@GetMapping(value = "/{listId}/games")
-	public List<GameMinDTO> findGames(@PathVariable Long listId) {
-		List<GameMinDTO> result = gameService.findByGameList(listId);
-		return result;
-	}
-	
-	@PostMapping(value = "/{listId}/replacement")
-	public void move(@PathVariable Long listId, @RequestBody ReplacementDTO body) {
-		gameListService.move(listId, body.getSourceIndex(), body.getDestinationIndex());
-	}
+    @GetMapping
+    public List<GameListDTO> findAll() {
+        return gameListService.findAll();
+    }
+
+    @GetMapping(value = "/{listId}/games")
+    public List<GameMinDTO> findGames(@PathVariable Long listId) {
+        List<GameMinDTO> result = gameService.findByGameList(listId);
+        return result;
+    }
+
+    @PostMapping(value = "/{listId}/replacement")
+    public void move(@PathVariable Long listId, @RequestBody ReplacementDTO body) {
+        gameListService.move(listId, body.getSourceIndex(), body.getDestinationIndex());
+    }
 }

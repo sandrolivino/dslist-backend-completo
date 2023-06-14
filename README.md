@@ -1,31 +1,5 @@
 # Projeto DSList - Intensivão Java Spring
-
-**1. Perdeu alguma aula ou material de apoio?**
-
-Inscreva-se para receber no seu email:
-
-https://devsuperior.com.br
-
-    ATENÇÃO: os conteúdos ficarão disponíveis somente até domingo. Então organize-se, e bora pra cima! 
-
-**2. Tem alguma dúvida?**
-
-Envie uma mensagem pra gente no email que chegou pra você no ato da sua inscrição.
-
-## Calendário
-
-Os conteúdos ficarão temporariamente disponíveis no nosso canal de eventos. Ative o lembrete:
-
-https://www.youtube.com/@DevsuperiorJavaSpring
-
-| Dia / horário  | Conteúdo |
-| ------------- | ------------- |
-| Segunda-feira 20h30 | Aula 1: Projeto estruturado |
-| Terça-feira 20h30  | Aula 2: Domínio e consultas |
-| Quarta-feira 20h30 | Aula 3: Deploy e CORS |
-| Quinta-feira 20h30 | Aula 4: Endpoint especial |
-| Sexta-feira 20h30 | Aula 5: Resumão e reforço do aprendizado |
-| Domingo 16h00 | Oficina: Avançando na modelagem de dados  |
+O projeto tem como objetivo manter uma base de jogos e classificá-los em listas específicas, com a possibilidade de ordenação dos jogos dentro da lista
 
 ## Modelo de domínio DSList
 
@@ -179,3 +153,261 @@ INSERT INTO tb_belonging (list_id, game_id, position) VALUES (2, 10, 4);
 ### Script Docker Compose
 
 https://gist.github.com/acenelio/5e40b27cfc40151e36beec1e27c4ff71
+
+
+### Comentários SANDRO
+
+## Aula 02
+
+[] Criar a classe GameList
+- Construtores: remover o super
+- Gerar os getters e setters
+- Gerar hashCode & equals: só com o id é suficiente
+[] Criar a classe Belonging: relação intermediária do relacionamento N to N entre Game e GameList
+- Como o JpaRepository exige um id único "JpaRepository<T, ID>", não é possível criar uma chave primária em Belonging com os atributos:
+-- private Game game;
+-- private GameList list;
+Será preciso criar uma classe auxiliar que conterá uma referência para Game e para GameList:
+
+[] Criar a classe de apoio BelongingPK
+@Embeddable
+public class BelongingPK {
+
+	@ManyToOne
+    @JoinColumn(name = "game_id")
+    private Game game;
+
+    @ManyToOne
+    @JoinColumn(name = "list_id")
+    private GameList list;
+
+	// Construtores
+	
+	// Getters and Setters
+	
+	// Equals & HashCodes: aqui tem que usar os dois atributos, pois serão a chave primária em Belonging
+}
+
+[] Classe Belonging após a criação de BelongingPK
+@Entity
+@Table(name = "tb_belonging")
+public class Belonging {
+
+	// @EmbeddedId porque estamos a clesse BelongingPK que contém ID composto entre Game e GameList
+	@EmbeddedId
+	private BelongingPK id = new BelongingPK();
+
+	private Integer position;
+	
+	// Construtores: no construtor com parâmetros, passar o Game e o GameList em separado ao invés de passar o BelongingPK
+	Ao invés disso:
+	public Belonging(BelongingPK id, Integer position) {
+		this.id = id;
+		this.position = position;
+	}
+	Isso:
+	public Belonging(Game game, GameList list, Integer position) {
+		this.id.setGame(game);
+		this.id.setList(list);
+		this.position = position;
+	}
+	
+	// Getters and Setters
+	
+	// HashCodes && Equals (com id e position)
+}
+
+[] Completar o seed do banco para os inserts de GameList e de Belonging
+
+[] Criar o DTO GameDTO: para buscar todas os atributos do Game
+- Lembrar que até então o DTO existente (GameMinDTO) trazia apenas dados resumidos do Game
+- Nesse caso, como a cópia será exata (Entity to DTO), usar BeanUtils direto no construtor:
+public GameDTO(Game entity) {
+	BeanUtils.copyProperties(entity, this);
+}
+- Para o BeanUtils funcionar, o DTO tem que ter todos os Getters e Setters
+
+[] Criar o método findById em GameService (Retorna um GameDTO que será usado pelo controller)
+- Lembrar que o findById do repositório retorna um Optional, então, ao final, inserir ".get()"
+@Transactional(readOnly = true) // Garante que a transação será ACID (atômica, consistente, isolada e durável)
+public GameDTO findById(@PathVariable Long listId) {
+	Game result = gameRepository.findById(listId).get();
+	return new GameDTO(result);
+}
+- Lembrar também que, como o id pode não existir, devemos fazer um tratamento de exceções: FAZER DEPOIS
+
+[] Criar o findById no GameController
+- Lembrar de passar o value "{id}" no @GetMapping
+@GetMapping(value = "/{id}")
+public GameDTO findById(@PathVariable Long id) {
+	GameDTO result = gameService.findById(id);
+	return result;
+}
+
+
+[] Criar GameListDTO
+- Somente com getters, pois não usou o BeanUtils
+
+[] Criar o repositório de GameList GameListRepository
+[] Criar o serviço de GameList GameListService
+[] Criar o controller GameListControler
+
+[] Criar consulta SQL Nativa
+- Deve ser implementado em GameRepository, pois todos os acessos a dados partem daqui:
+	@Query(nativeQuery = true, value = """
+			SELECT tb_game.id, tb_game.title, tb_game.game_year AS `year`, tb_game.img_url AS imgUrl,
+			tb_game.short_description AS shortDescription, tb_belonging.position
+			FROM tb_game
+			INNER JOIN tb_belonging ON tb_game.id = tb_belonging.game_id
+			WHERE tb_belonging.list_id = :listId
+			ORDER BY tb_belonging.position
+				""")
+	List<GameMinProjection> searchByList(Long listId);
+
+- Quando se faz uma nativeQuery, o resultado da consulta deve ser uma interface, no nosso caso:
+public interface GameMinProjection {
+	Long getId();
+	String getTitle();
+	Integer getYear();
+	String getImgUrl();
+	String getShortDescription();
+	Integer getPosition();
+}
+// A interface DEVE ter métodos GETTERS correspondentes à minha consulta.
+
+[] Criar um endpoint para usar a consulta com a projection
+- Esse endpoint é uma busca de games por lista
+- Atenção: DEVE ser criado em GameService, pois é uma consulta que retorna Games
+@Transactional(readOnly = true)
+public List<GameMinDTO> findByGameList(Long listId) {
+	List<GameMinProjection> games = gameRepository.searchByList(listId);
+	return games.stream().map(GameMinDTO::new).toList();
+}
+
+[] Criar um novo construtor em GameMinDTO, que irá receber a projection como argumento
+public GameMinDTO(GameMinProjection projection) {
+	id = projection.getId();
+	title = projection.getTitle();
+	year = projection.getYear();
+	imgUrl = projection.getImgUrl();
+	shortDescription = projection.getShortDescription();
+}
+
+[] Criação do endpoint de fato: DEVE ser criado no Controller de Listas (Apesar de retornar Games)
+@GetMapping(value = "/{listId}/games")
+	public List<GameMinDTO> findGames(@PathVariable Long listId) {
+	List<GameMinDTO> result = gameService.findByGameList(listId);
+	return result;
+}
+
+- Não esquecer de injetar o GameService no controller de Listas
+@Autowired
+private GameListService gameListService;
+
+
+## Aula 03
+
+Até 11 min, como configurar o GITHub para portfólio
+[] Perfis de projeto
+- test: Banco H2
+- homolog: Homologação em ambiente o mais parecido possível com o ambiente prod
+- prod: 
+
+[] Configurar o docker-compose.yaml para usar mysql, postgres, phpMyAdmin e pgAdmin
+- Criei em C:\Sistemas\Estudos\Docker
+- No curso ele não fala de mysql nem de phpMyAdmin
+
+[] Configurar os ambientes e testar a aplicação no PostgreSQL. Até então a aplicação está no H2
+- Em application.properties, criar a seguinte entrada:
+spring.profiles.active=${APP_PROFILE:test}
+Com isso, o application.properties irá redirecionar a aplicação para:
+-- application-test.properties, onde esse -test, é o apelido dado em: ${APP_PROFILE:test}
+-- Em application-test.properties nós temos as configurações do H2
+
+[] Criar os profiles application-dev.properties e application-prod.properties
+- Lembrar de mudar a porta (5433) para acesso de fora do container: jdbc:postgresql://localhost:5433/dsgamelist
+
+[] Configurar o arquivo system.properties, com o conteúdo: java.runtime.version=17 (o mesmo do pom.xml)
+- Fica na pasta raiz do projeto
+- Algumas plataformas de nuvem, como o Hiroku, exigem esse arquivo.
+
+[] Gerar script da base de dados para rodar no postgresql
+- O spring gera isso automaticamente pra gente
+- Descomentar as 4 primeiras linhas de application-dev.properties
+- Mudar o perfil de test para dev em spring.profiles.active=${APP_PROFILE:test}
+- Rodar a aplicação
+- Verificar que o spring criou na pasta do projeto (C:\Sistemas\Estudos\dslist-backend-aula3) um arquivo chamado create.sql
+- Copiar o conteúdo do arquivo e rodar do pgAdmin
+- Testar a aplicação no Postman para ver se tudo está bem
+-- Nesse momento, verificar que a consulta customizada, que funcionou no H2, não funcionou no PostgreSQL, pois a palavra year é reservada no PostgreSQL
+-- Ajustar a consulta customizada, tirando as aspas simples de year e renomeando para gameYear
+-- Alterar o campo também na projection e no DTO GameMinDTO.
+
+[] Voltar o ambiente para test
+
+Pré-requisitos para deploy CI/CD na nuvem
+[] Criar conta no RailWay - http://railway.app
+[] Login com o GitHub (conta com mais de 90 dias)
+[] Projeto Spring Boot salvo no GitHub
+[] Script do banco disponível
+[] Aplicativo de gestão de banco instalado (local ou docker)
+
+Passos RailWay
+[] Prover um servidor de BD no RailWay
+- Start a new project
+- Provision PostgreSQL
+- Conectar nosso PgAdmin (Docker) no PostgreSQL recém-criado no RailWay. Copiar DATABASE_URL e preencher os campos:
+postgresql://postgres:z9dfZH8m60w6ux8mK3cp@containers-us-west-18.railway.app:8033/railway
+Onde...
+postgresql://
+postgres = user
+:
+z9dfZH8m60w6ux8mK3cp = password
+@
+containers-us-west-18.railway.app = host
+:
+8033 = port
+/
+railway = database_name
+-- Incluir também esse database_name na aba Advanced
+
+
+[] Realizar seed de dados - com o create.sql que geramos nas aulas anteriores
+- RailWay >> Schemas >> Public >> Tables: QueryTool
+- Copiar e colar o conteúdo de create.sql
+
+[] Criar uma aplicação RailWay vinculada a um repositório GitHub
+- Start a new project
+- Deploy from GitHub
+- Conectar no GitHub e escolher o repositório do projeto
+- Configurar variáveis de ambiente...
+
+[] Configurar variáveis de ambiente
+- APP_PROFILE
+- DB_URL (Formato: jdbc:postgresql://host:porta/nome-da-base
+- DB_USERNAME
+- DB_PASSWORD
+- CORS_ORIGINS
+
+[] Gerar um domínio público no RailWay
+- Settings >> Domain: Gennerate
+-- resultado (muda de app para app): dslist-backend-completo-production.up.railway.app
+-- Testar no browser: dslist-backend-completo-production.up.railway.app/games
+
+[] Configurar o Postman com o endpoint na nuvem
+- Criar variável de ambiente no postman
+
+[] Configurar o CORS_ORIGINS
+O que é o CORS? O CORS (Cross-origin Resource Sharing) é um mecanismo usado para adicionar cabeçalhos HTTP que informam aos navegadores para permitir que uma aplicação Web seja executada em uma origem e acesse recursos de outra origem diferente.
+Criar a classe WebConfig no pacote config
+- O conteúdo é padrão (CTRL C + CTRL V)
+- Não testei as URLs, por isso não configurei o CORS_ORIGINS no RailWay
+
+[] Testar esteira de CI/CD. RailWay integrado com GitHub
+- Mudar alguma coisa no código e fazer o push no github pra ver a aplicação subindo no RailWay
+
+
+## Aula 04
+[] Configurar os métodos de ordenação da lista
+- Criar consulta customizada no repositório de listas
+- Lembrar que a atualização da lista é imdepotente, ou seja, todas as vezes que for rodada gerará um resultado diferente

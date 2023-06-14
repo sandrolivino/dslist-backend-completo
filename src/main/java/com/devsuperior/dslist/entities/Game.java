@@ -22,7 +22,7 @@ public class Game {
 	
 	@Column(name = "game_year")
 	private Integer year;
-	private Genre genre;
+	private Integer genre;
 	private String platforms;
 	private Double score;
 	private String imgUrl;
@@ -44,7 +44,7 @@ public class Game {
 		this.id = id;
 		this.title = title;
 		this.year = year;
-		this.genre = genre;
+		setGenre(genre);
 		this.platforms = platforms;
 		this.score = score;
 		this.imgUrl = imgUrl;
@@ -79,11 +79,13 @@ public class Game {
 	}
 
 	public Genre getGenre() {
-		return genre;
+		return Genre.valueOf(genre);
 	}
 
 	public void setGenre(Genre genre) {
-		this.genre = genre;
+		if (genre != null){
+			this.genre = genre.getCode();
+		}
 	}
 
 	public String getPlatforms() {
